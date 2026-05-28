@@ -8,10 +8,12 @@ from app.services.material_service import (
     update_material_estado,
 )
 from app.services.prestamo_service import create_prestamo, devolver_prestamo, get_prestamos
+from app.services.usuario_service import create_usuario, get_usuarios
 
 __all__ = [
     "create_material",
     "create_prestamo",
+    "create_usuario",
     "devolver_prestamo",
     "enviar_material_mantenimiento",
     "get_bitacora",
@@ -20,5 +22,6 @@ __all__ = [
     "get_materiales",
     "get_materiales_disponibles",
     "get_prestamos",
+    "get_usuarios",
     "update_material_estado",
 ]
