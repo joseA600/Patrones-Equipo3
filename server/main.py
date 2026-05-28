@@ -1,7 +1,3 @@
-from fastapi import FastAPI
+from app.main import app
 
-app = FastAPI()
-
-@app.get("/")
-def inicio():
-    return {"mensaje": "Servidor funcionando"}
+# Este archivo mantiene el comando `uvicorn main:app` funcionando desde /server.
