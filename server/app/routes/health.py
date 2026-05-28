@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.models import HealthResponse
-from app.services import get_health_status
+from app.models import DatabaseStatusResponse, HealthResponse
+from app.services import get_database_status, get_health_status
 
 
 router = APIRouter(tags=["health"])
@@ -19,3 +19,10 @@ def health_check() -> HealthResponse:
     """Endpoint explicito para monitoreo y pruebas iniciales."""
 
     return get_health_status()
+
+
+@router.get("/db-status", response_model=DatabaseStatusResponse)
+def database_status() -> DatabaseStatusResponse:
+    """Endpoint para validar la conexion reutilizable a MongoDB."""
+
+    return get_database_status()
