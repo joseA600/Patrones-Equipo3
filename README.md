@@ -1,8 +1,27 @@
 # Patrones Equipo 3
 
-Proyecto base con frontend en React + Vite y backend en FastAPI.
+Sistema academico para administrar materiales, prestamos, devoluciones,
+mantenimiento y bitacora. El proyecto usa React + Vite en el frontend,
+FastAPI en el backend y MongoDB como base de datos.
 
-## Estructura principal
+## Tecnologias
+
+- React con Vite
+- React Router
+- Axios
+- FastAPI
+- PyMongo
+- MongoDB
+
+## Patrones Implementados
+
+- Singleton: reutiliza una unica conexion de MongoDB.
+- Factory Method: crea materiales por tipo (`Laptop`, `Router`, `Proyector`, `Adaptador`, `Cable`).
+- State: valida cambios entre `Disponible`, `Prestado`, `EnMantenimiento` y `DadoDeBaja`.
+- Observer: registra eventos automaticos en la bitacora.
+- Command: encapsula prestar, devolver y enviar a mantenimiento.
+
+## Estructura Principal
 
 ```text
 client/
@@ -15,25 +34,38 @@ client/
 server/
   app/
     models/
-    patterns/
     routes/
     services/
+  patterns/
+    command/
+    observer/
+    state/
   main.py
   requirements.txt
+  .env.example
 ```
 
-## Backend
+## Instalacion Backend
 
 ```bash
 cd server
+python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 uvicorn main:app --reload
+```
+
+Variables principales:
+
+```env
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DATABASE=patrones_equipo3
 ```
 
 La API queda disponible en `http://localhost:8000`.
 
-## Frontend
+## Instalacion Frontend
 
 ```bash
 cd client
@@ -43,8 +75,30 @@ npm run dev
 
 El cliente queda disponible en `http://localhost:5173`.
 
-## Notas
+## Endpoints Principales
 
-- CORS esta configurado para el cliente local de Vite.
-- No se implementa MongoDB todavia.
-- La estructura queda preparada para agregar modelos, rutas, servicios y patrones de diseno de forma ordenada.
+- `GET /health`
+- `GET /db-status`
+- `GET /materiales`
+- `POST /materiales`
+- `GET /materiales/disponibles`
+- `PUT /materiales/{id}/mantenimiento`
+- `POST /prestamos`
+- `GET /prestamos`
+- `PUT /prestamos/{id}/devolver`
+- `GET /bitacora`
+
+## Flujo General
+
+1. Registrar materiales desde la pagina Materiales.
+2. Prestar materiales disponibles desde Prestamos.
+3. Registrar devoluciones desde Prestamos.
+4. Enviar materiales a mantenimiento.
+5. Consultar reportes y bitacora.
+
+## Notas de Entrega
+
+- El frontend consume el backend con Axios desde `client/src/services`.
+- La bitacora se genera automaticamente mediante Observer.
+- Las transiciones invalidas se bloquean en backend mediante State.
+- Las acciones principales se encapsulan con Command.

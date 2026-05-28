@@ -1,13 +1,55 @@
-from typing import Any
+from datetime import datetime
+from typing import Any, Optional
 
 from bson import ObjectId
+from fastapi import HTTPException, status
+from pymongo import ReturnDocument
 
 from app.db import get_database
 from app.models import MaterialCreate, MaterialResponse
 from app.patterns.factory import MaterialFactory
+from patterns.state import (
+    EstadoNoValidoError,
+    TransicionNoPermitidaError,
+    cambiar_estado,
+    normalizar_estado,
+)
+from patterns.observer import get_event_manager
 
 
 COLLECTION_NAME = "materiales"
+
+
+def _get_event_type(estado_anterior: str, estado_nuevo: str) -> Optional[str]:
+    """Traduce cambios de estado en eventos de negocio observables."""
+
+    if estado_anterior == "Disponible" and estado_nuevo == "Prestado":
+        return "prestamo"
+    if estado_anterior == "Prestado" and estado_nuevo == "Disponible":
+        return "devolucion"
+    if estado_nuevo == "EnMantenimiento":
+        return "mantenimiento"
+
+    return None
+
+
+def _build_event_description(
+    tipo_evento: str,
+    estado_anterior: str,
+    estado_nuevo: str,
+) -> str:
+    """Genera una descripcion simple para la bitacora."""
+
+    descriptions = {
+        "prestamo": "Material marcado como prestado",
+        "devolucion": "Material devuelto y marcado como disponible",
+        "mantenimiento": "Material enviado a mantenimiento",
+    }
+
+    return descriptions.get(
+        tipo_evento,
+        f"Cambio de estado de {estado_anterior} a {estado_nuevo}",
+    )
 
 
 def _collection():
@@ -24,7 +66,7 @@ def _serialize_material(document: dict[str, Any]) -> MaterialResponse:
         nombre=document["nombre"],
         tipo=document["tipo"],
         descripcion=document.get("descripcion"),
-        estado=document["estado"],
+        estado=normalizar_estado(document["estado"]),
         fecha_registro=document["fecha_registro"],
     )
 
@@ -50,9 +92,85 @@ def create_material(material: MaterialCreate) -> MaterialResponse:
 def get_materiales_disponibles() -> list[MaterialResponse]:
     """Lista unicamente materiales disponibles para futuros prestamos."""
 
-    documentos = _collection().find({"estado": "disponible"}).sort(
-        "fecha_registro",
-        -1,
-    )
+    documentos = _collection().find(
+        {"estado": {"$in": ["Disponible", "disponible"]}},
+    ).sort("fecha_registro", -1)
 
     return [_serialize_material(documento) for documento in documentos]
+
+
+def update_material_estado(material_id: str, nuevo_estado: str) -> MaterialResponse:
+    """Cambia el estado de un material usando el patron State."""
+
+    if not ObjectId.is_valid(material_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Id de material no valido",
+        )
+
+    material = _collection().find_one({"_id": ObjectId(material_id)})
+    if material is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Material no encontrado",
+        )
+
+    estado_anterior = normalizar_estado(material["estado"])
+
+    try:
+        estado_validado = cambiar_estado(estado_anterior, nuevo_estado)
+    except EstadoNoValidoError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+    except TransicionNoPermitidaError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    updated_material = _collection().find_one_and_update(
+        {"_id": ObjectId(material_id)},
+        {
+            "$set": {"estado": estado_validado},
+            "$push": {
+                "historial_estados": {
+                    "estado": estado_validado,
+                    "motivo": "Cambio validado por patron State",
+                    "fecha": datetime.utcnow(),
+                },
+            },
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+
+    tipo_evento = _get_event_type(estado_anterior, estado_validado)
+    if tipo_evento is not None:
+        # Observer registra automaticamente la bitacora sin acoplar la ruta a MongoDB.
+        get_event_manager().notify(
+            {
+                "tipo_evento": tipo_evento,
+                "material_id": str(updated_material["_id"]),
+                "material_nombre": updated_material["nombre"],
+                "estado_anterior": estado_anterior,
+                "estado_nuevo": estado_validado,
+                "descripcion": _build_event_description(
+                    tipo_evento,
+                    estado_anterior,
+                    estado_validado,
+                ),
+            },
+        )
+
+    return _serialize_material(updated_material)
+
+
+def enviar_material_mantenimiento(material_id: str) -> MaterialResponse:
+    """Ejecuta el comando para enviar un material a mantenimiento."""
+
+    from patterns.command.mantenimiento_command import EnviarMantenimientoCommand
+
+    material = EnviarMantenimientoCommand(material_id).execute()
+
+    return _serialize_material(material)

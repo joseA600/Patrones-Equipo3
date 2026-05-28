@@ -18,6 +18,13 @@ class MaterialCreator(ABC):
             "tipo": self.material_type,
             "descripcion": material.descripcion,
             "estado": material.estado,
+            "historial_estados": [
+                {
+                    "estado": material.estado,
+                    "motivo": "Registro inicial",
+                    "fecha": datetime.utcnow(),
+                },
+            ],
             "fecha_registro": datetime.utcnow(),
         }
 
