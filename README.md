@@ -5,11 +5,10 @@ mantenimiento y bitacora. El proyecto usa React + Vite en el frontend,
 FastAPI en el backend y MongoDB como base de datos.
 
 integrantes de el equipo:
--Acevedo Garcia Jose Antonio 
--osorio hernandez brian lisandro
--victor manuel 
--velazco martinez candy heidy
-
+- Acevedo Garcia Jose Antonio 
+- Osorio Hernandez Brian Lisandro
+- Victor Manuel
+- Velazco Martinez Candy Heidy 
 ## Tecnologias
 
 - React con Vite
