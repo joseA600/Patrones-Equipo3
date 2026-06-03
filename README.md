@@ -4,6 +4,12 @@ Sistema academico para administrar materiales, prestamos, devoluciones,
 mantenimiento y bitacora. El proyecto usa React + Vite en el frontend,
 FastAPI en el backend y MongoDB como base de datos.
 
+integrantes de el equipo:
+-Acevedo Garcia Jose Antonio 
+-osorio hernandez brian lisandro
+-victor manuel 
+-velazco martinez candy heidy
+
 ## Tecnologias
 
 - React con Vite
